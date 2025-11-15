@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Roblox Mesh Uploader (Meshy)</title>
+    <style>
+      body { font-family: Arial, sans-serif; max-width:720px; margin:2rem auto; }
+      button { padding:0.6rem 1rem; font-size:1rem; }
+      textarea { width:100%; height:6rem; margin-top:0.5rem; }
+      .row { margin:1rem 0; }
+      pre { background:#f4f4f4; padding:1rem; overflow:auto; }
+    </style>
+  </head>
+  <body>
+    <h1>Roblox Mesh Uploader (Meshy)</h1>
+
+    <div class="row">
+      <label for="prompt">Prompt per la mesh:</label>
+      <textarea id="prompt" placeholder="Esempio: 'small futuristic helmet, realistic'">small futuristic helmet</textarea>
+      <div style="margin-top:0.5rem;">
+        <button id="generate">Genera mesh (Meshy)</button>
+      </div>
+    </div>
+
+    <div class="row" id="result" style="display:none;">
+      <h3>Risultato</h3>
+      <p id="msg"></p>
+      <a id="download" href="#" download="mesh.glb">Scarica GLB</a>
+      <div style="margin-top:0.5rem;">
+        <button id="upload">Carica su Roblox</button>
+      </div>
+      <pre id="log"></pre>
+    </div>
+
+    <script>
+      const $generate = document.getElementById('generate');
+      const $prompt = document.getElementById('prompt');
+      const $result = document.getElementById('result');
+      const $msg = document.getElementById('msg');
+      const $download = document.getElementById('download');
+      const $log = document.getElementById('log');
+      const $upload = document.getElementById('upload');
+
+      $generate.addEventListener('click', async () => {
+        $msg.textContent = 'Generazione in corso...';
+        $log.textContent = '';
+        $result.style.display = 'block';
+        try {
+          const res = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ prompt: $prompt.value })
+          });
+          if (!res.ok) throw new Error(await res.text());
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          $download.href = url;
+          $msg.textContent = 'Mesh generata (GLB). Puoi scaricarla o caricarla su Roblox.';
+        } catch (err) {
+          $msg.textContent = 'Errore: ' + err.message;
+        }
+      });
+
+      $upload.addEventListener('click', async () => {
+        $log.textContent = 'Upload in corso...';
+        try {
+          const fileRes = await fetch($download.href);
+          const blob = await fileRes.blob();
+          const form = new FormData();
+          form.append('file', blob, 'mesh.glb');
+          form.append('name', 'Generated Mesh (Meshy)');
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            body: form
+          });
+          const text = await res.text();
+          $log.textContent = `Status: ${res.status}\n\n${text}`;
+        } catch (err) {
+          $log.textContent = 'Errore upload: ' + err.message;
+        }
+      });
+    </script>
+  </body>
+</html>
